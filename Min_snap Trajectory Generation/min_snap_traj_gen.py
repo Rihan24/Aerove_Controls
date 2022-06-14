@@ -1,3 +1,6 @@
+# Minimum snap trajectory generation Python implementation 
+#require to install Scipy,qpsolvers (python3) 
+
 from math import factorial as f
 import numpy as np
 from scipy.linalg import block_diag
@@ -7,21 +10,22 @@ from mpl_toolkits import mplot3d
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
-class min_snap:
+class min_snap:          
     def __init__(self, x, y, z, v, n=8):
         self.v = v
-        self.n = n
-        self.m = len(x)-1
+        self.n = n         #number of coefficients in each polynomial ( [degree=7] +1 )
+        self.m = len(x)-1  # number of peicewise polynomials
         m = self.m
-        #print(m)
-        self.x = x
+        
+	#waypoint arrays
+        self.x = x  
         self.y = y
         self.z = z
         self.t=self.time_array(0.1)
-        #self.t_test = self.time_array(0.1)
-        #self.t =np.copy(self.t_test)
-        #self.t=[0.2, 0.25954395815091413, 0.2882510441216574, 0.34498765334273723]
-        print(self.t)
+
+  
+
+        #print(self.t)
         self.q=np.zeros(shape=(n*m,1)).reshape((n*m,))
         self.G=np.zeros(shape=((4*m)+2,n*m))
         self.h=np.zeros(shape=((4*m)+2,1)).reshape(((4*m)+2,))
@@ -30,19 +34,23 @@ class min_snap:
         b_x = np.array([x[0],0,0,x[m],0,0])
         b_x = np.append(b_x, x[1:m])
         b_x = np.append(b_x, np.zeros(shape=(3*(m-1))))
+
         b_y = np.array([y[0],0,0,y[m],0,0])
         b_y = np.append(b_y, y[1:m])
         b_y = np.append(b_y, np.zeros(shape=(3*(m-1))))
+
         b_z = np.array([z[0],0,0,z[m],0,0])
         b_z = np.append(b_z, z[1:m])
         b_z = np.append(b_z, np.zeros(shape=(3*(m-1))))
+
         self.b_x = b_x
         self.b_y = b_y
         self.b_z = b_z
+
         self.form_Q()
         self.form_A()
 
-    def time_array(self,start_time):
+    def time_array(self,start_time):      # generate timestamp array based on given velocity profile
         t = [start_time]
         for i in range(1,self.m+1):
             dist = np.sqrt((self.x[i]-self.x[i-1])**2 + (self.y[i]-self.y[i-1])**2 + (self.z[i]-self.z[i-1])**2)
@@ -50,7 +58,7 @@ class min_snap:
             t.append(t[-1]+ti)
         return t
 
-    def form_Q(self):
+    def form_Q(self):  #generate the Q matirx
         Q_list = []
         for l in range(1,self.m+1):
             
@@ -72,7 +80,7 @@ class min_snap:
         self.Q=Q+(0.0001*np.identity(self.n*self.m))
         print(type(self.Q),'typeofQ')
 
-    def form_A(self):
+    def form_A(self):   #form the A matrix
         n = self.n
         m = self.m
         t = self.t
@@ -123,13 +131,13 @@ class min_snap:
         self.A = A
         print(type(self.A),'typeofA')
 
-    def solve(self):
+    def solve(self):     # Solve for coefficient array using pthon QP Solvers
         print(type(self.q),type(self.G),type(self.h),type(self.b_x))
         self.p_x=solve_qp(self.Q, self.q,self.G,self.h, self.A, self.b_x)
         self.p_y=solve_qp(self.Q, self.q,self.G,self.h, self.A, self.b_y)
         self.p_z=solve_qp(self.Q, self.q,self.G,self.h, self.A, self.b_z)
 
-    def plot(self):
+    def plot(self):      #plot trajectory using result arrays self.p_x,self.p_y,self.p_z
         plt.figure(figsize=(10,5))
         ax = plt.axes(projection ='3d')
 
@@ -152,10 +160,10 @@ class min_snap:
         plt.show()
 
 if __name__ == '__main__':
-    x = [2,0,-2,0]
+    x = [2,0,-2,0]             # define waypoint array
     y = [0,2,0,-2]
     z = [0,1,2,0]
-    v = 10
-    ms = min_snap(x,y,z,v)
-    ms.solve()
+    v = 10                     # average velocity profile
+    ms = min_snap(x,y,z,v)     
+    ms.solve()                 #solve for polynomial coefficients
     ms.plot()
